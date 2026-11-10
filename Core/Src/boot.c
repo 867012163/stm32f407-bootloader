@@ -46,7 +46,10 @@ void Bootloader_ProcessPacket(void)
         if(ret == HAL_OK && boot_jump_pending)
         {
             HAL_Delay(10);
-            BootFlash_JumpToApp();
+            if(BootFlash_JumpToApp() != HAL_OK)
+            {
+                boot_jump_pending = false;     // 失败就回到正常等待
+            }
         }
 
         UART_StartReceive();

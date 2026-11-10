@@ -215,6 +215,10 @@ HAL_StatusTypeDef BootProtocol_ParsePacket(const uint8_t *rx_buf, uint16_t rx_le
             break;
         
         case BL_CMD_CONFIRM:
+            if(meta.pending_slot != SLOT_A && meta.pending_slot != SLOT_B)
+            {
+                return HAL_ERROR;      // 没有待确认固件 → NAK，不改状态
+            }
             meta.active_slot = meta.pending_slot;
             meta.pending_slot = SLOT_NONE;
             meta.rollback_slot = SLOT_NONE;

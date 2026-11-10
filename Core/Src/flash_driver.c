@@ -23,9 +23,11 @@ uint32_t GetSector(uint32_t addr)
     return FLASH_SECTOR_7;
 }
 
+static bool SlotRangeOk(uint32_t slot, uint32_t offset, uint32_t len);
+
 HAL_StatusTypeDef BootFlash_EraseApp(uint32_t app_size, uint32_t update_slot)
 {
-    if(app_size == 0 || app_size > APP_MAX_SIZE)
+    if(app_size == 0 || !SlotRangeOk(update_slot, 0, app_size))
     {
         return HAL_ERROR;
     }
@@ -61,7 +63,7 @@ HAL_StatusTypeDef BootFlash_Write(uint32_t offset, const uint8_t *data, uint32_t
         return HAL_ERROR;
     }
     
-    if((offset + len) > APP_MAX_SIZE)
+    if(!SlotRangeOk(update_slot, offset, len))
     {
         return HAL_ERROR;
     }
@@ -101,6 +103,14 @@ HAL_StatusTypeDef BootFlash_Write(uint32_t offset, const uint8_t *data, uint32_t
 
     HAL_FLASH_Lock();
     return ret;
+}
+
+static bool SlotRangeOk(uint32_t slot, uint32_t offset, uint32_t len)
+{
+    if(slot != SLOT_A && slot != SLOT_B) return false;
+    uint32_t size = (slot == SLOT_A) ? APP_ZONE_A_SIZE : APP_ZONE_B_SIZE;
+    if(offset > size || len > (size - offset)) return false;
+    return true;
 }
 
 bool BootFlash_IsAppValid(uint32_t slot)

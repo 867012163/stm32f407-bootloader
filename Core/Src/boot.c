@@ -7,6 +7,7 @@
 uint8_t rx_buf[RX_BUF_LEN];
 volatile uint16_t rx_len = 0;
 volatile uint8_t rx_ready = 0;
+volatile uint32_t boot_last_activity_tick = 0;
 volatile HAL_StatusTypeDef uart_rx_status = HAL_OK;
 volatile uint32_t uart_error_code = HAL_UART_ERROR_NONE;
 uint8_t tx_buf[64];
@@ -23,6 +24,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     {
         rx_len = Size;
         rx_ready = 1;
+        boot_last_activity_tick = HAL_GetTick();   /* 有数据进来就刷新空闲计时 */
     }
 }
 
@@ -32,16 +34,18 @@ void Bootloader_ProcessPacket(void)
     {
         rx_ready = 0;
         HAL_StatusTypeDef ret = BootProtocol_ParsePacket(rx_buf, rx_len);
-        if(ret == HAL_OK)
+        uint16_t rsp_len = BootProtocol_TakeResponse(tx_buf, (uint16_t)sizeof(tx_buf));
+
+        if(rsp_len > 0U)
         {
-            tx_buf[0] = BL_ACK;
+            /* INFO 等命令返回完整响应帧，不再单独回 ACK */
+            HAL_UART_Transmit(&huart1, tx_buf, rsp_len, 200);
         }
         else
         {
-            tx_buf[0] = BL_NACK;
+            tx_buf[0] = (ret == HAL_OK) ? BL_ACK : BL_NACK;
+            HAL_UART_Transmit(&huart1, tx_buf, 1, 100);
         }
-
-        HAL_UART_Transmit(&huart1, tx_buf, 1, 100);
 
         if(ret == HAL_OK && boot_jump_pending)
         {
@@ -59,6 +63,7 @@ void Bootloader_ProcessPacket(void)
 
 void Int_bootloader_init(void)
 {
+   boot_last_activity_tick = HAL_GetTick();
    UART_StartReceive();
     
 }

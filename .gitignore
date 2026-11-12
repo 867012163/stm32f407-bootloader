@@ -1,3 +1,10 @@
 build
 mx.scratch
 !.settings
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 固件镜像属于构建产物，可重新生成，不进版本库
+firmware/*.bin

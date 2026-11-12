@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #define BOOT_META_MAGIC     0x424C4D54U  
-#define BOOT_META_VERSION   1U
+#define BOOT_META_VERSION   2U
 
 #define SLOT_NONE           0xFFFFFFFFU
 #define SLOT_A              0x00000000U
@@ -20,6 +20,7 @@
 typedef struct{
     uint32_t magic;           // 固定标记，判断 metadata 是否有效
     uint32_t version;         // metadata 结构版本
+    uint32_t seq;             // 写入序号，双份之间选最新的一份
     uint32_t active_slot;     // 当前有效 APP：A 或 B
     uint32_t pending_slot;    // 待确认 APP：A 或 B，没有则为 NONE
     uint32_t rollback_slot;   // 回滚 APP：A 或 B，没有则为 NONE
@@ -47,5 +48,10 @@ uint32_t Boot_GetWriteSlot(const BootMeta *meta);
 uint32_t Boot_GetSlotAddr(uint32_t slot);
 uint32_t Boot_GetActiveSlot(const BootMeta *meta);
 uint32_t Boot_GetPendingSlot(const BootMeta *meta);
+
+#ifdef BL_FAULT_INJECT
+/* 测试用：把"写到第 N 个半字时复位"设置好，0xFFFFFFFF 表示关闭 */
+void BootMeta_SetFault(uint32_t halfword_index);
+#endif
 
 #endif

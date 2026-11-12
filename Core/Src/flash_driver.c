@@ -120,7 +120,10 @@ bool BootFlash_IsAppValid(uint32_t slot)
     {
         return false;
     }
-    
+
+    /* 每个分区用自己的大小，不能共用同一个上限 */
+    uint32_t slot_size = (slot == SLOT_A) ? APP_ZONE_A_SIZE : APP_ZONE_B_SIZE;
+
     uint32_t app_stack = *(uint32_t *)addr;
     uint32_t app_reset = *(uint32_t *)(addr + 4U);
 
@@ -129,12 +132,45 @@ bool BootFlash_IsAppValid(uint32_t slot)
         return false;
     }
 
-    if(app_reset < addr || app_reset > (addr + APP_MAX_SIZE))
+    if(app_reset < addr || app_reset > (addr + slot_size))
     {
         return false;
     }
 
     return true;
+}
+
+/*
+ * 回读校验：把写进 Flash 的固件整包读出来重算 CRC32，跟元数据里记录的比。
+ * 只校验"收到的数据"是不够的——写失败、没擦干净、掉电写坏都查不出来。
+ */
+bool BootFlash_VerifySlot(uint32_t slot)
+{
+    uint32_t addr = Boot_GetSlotAddr(slot);
+    uint32_t size;
+    uint32_t crc;
+
+    if(slot == SLOT_A)
+    {
+        size = meta.slot_a_size;
+        crc  = meta.slot_a_crc;
+    }
+    else if(slot == SLOT_B)
+    {
+        size = meta.slot_b_size;
+        crc  = meta.slot_b_crc;
+    }
+    else
+    {
+        return false;
+    }
+
+    if(size == 0U || !SlotRangeOk(slot, 0U, size))
+    {
+        return false;
+    }
+
+    return BootProtocol_Crc32((const uint8_t *)addr, size) == crc;
 }
 
 HAL_StatusTypeDef BootFlash_SelectBootSlot(uint32_t *slot)
@@ -146,7 +182,9 @@ HAL_StatusTypeDef BootFlash_SelectBootSlot(uint32_t *slot)
 
     if(meta.pending_slot == SLOT_A || meta.pending_slot == SLOT_B)
     {
-        if(!BootFlash_IsAppValid(meta.pending_slot) || meta.boot_count >= BOOT_MAX_RTY)
+        if(!BootFlash_IsAppValid(meta.pending_slot) ||
+           meta.boot_count >= BOOT_MAX_RTY ||
+           !BootFlash_VerifySlot(meta.pending_slot))
         {
             if(meta.pending_slot == SLOT_A)
             {

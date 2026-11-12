@@ -97,7 +97,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   BootMeta_Load();
   Int_bootloader_init();
-  uint32_t boot_start_tick = HAL_GetTick();
 
   /* USER CODE END 2 */
 
@@ -109,7 +108,8 @@ int main(void)
     
     if(!BootProtocol_IsStarted() && !boot_jump_pending)
     {
-      if((HAL_GetTick() - boot_start_tick) > 10000)
+      /* 真正的空闲超时：任意串口数据都会刷新 boot_last_activity_tick */
+      if((HAL_GetTick() - boot_last_activity_tick) > 10000)
       {
         BootFlash_JumpToApp();
       }

@@ -38,6 +38,14 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "MinSizeRel"
             }
+        },
+        {
+            "name": "FaultInject",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BL_FAULT_INJECT": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -56,6 +64,10 @@
         {
             "name": "MinSizeRel",
             "configurePreset": "MinSizeRel"
+        },
+        {
+            "name": "FaultInject",
+            "configurePreset": "FaultInject"
         }
     ]
 }
